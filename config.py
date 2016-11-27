@@ -5,9 +5,9 @@ from pyparsing import basestring
 from enums import *
 
 
-class General(object):
+class GlobalConfig(object):
     """
-    This contains the general configuration options that apply to all virtual servers or the whole process.
+    This contains the general configuration options that apply to all virtual servers and the whole process.
     """
 
     def __init__(self, checktimeout=5, negotiatetimeout=30, checkinterval=10, failurecount=1, autoreload=False,
@@ -15,8 +15,55 @@ class General(object):
                  emailalert=None, emailalertfrom=None, emailalertfreq=0, emailalertstatus=ServerStatus.all,
                  smtp=None, execute=None, supervised=False, quiescent=True, readdquiescent=True, cleanstop=True,
                  maintenancedir=None):
-        # TODO
-        pass
+        if isinstance(checktimeout, int) and checktimeout > 0:
+            self.checktimeout = checktimeout
+        else:
+            raise ValueError
+
+        if isinstance(negotiatetimeout, int) and negotiatetimeout > 0:
+            self.negotiatetimeout = negotiatetimeout
+        else:
+            raise ValueError
+
+        if isinstance(checkinterval, int) and checkinterval > 0:
+            self.checkinterval = checkinterval
+        else:
+            raise ValueError
+
+        if isinstance(failurecount, int) and failurecount > 0:
+            self.failurecount = failurecount
+        else:
+            raise ValueError
+
+        if isinstance(autoreload, bool):
+            self.autoreload = autoreload
+        else:
+            raise ValueError
+
+        if isinstance(logfile, basestring):
+            self.logfile = logfile
+        else:
+            raise ValueError
+
+        if isinstance(supervised, bool):
+            self.supervised = supervised
+        else:
+            raise ValueError
+
+        if isinstance(quiescent, bool):
+            self.quiescent = quiescent
+        else:
+            raise ValueError
+
+        if isinstance(readdquiescent, bool):
+            self.readdquiescent = readdquiescent
+        else:
+            raise ValueError
+
+        if isinstance(cleanstop, bool):
+            self.cleanstop = cleanstop
+        else:
+            raise ValueError
 
 
 class __Virtual(object):

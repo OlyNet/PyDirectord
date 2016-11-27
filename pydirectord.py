@@ -3,27 +3,26 @@ from importlib import import_module
 
 from twisted.internet import reactor
 
-from config import Virtual4, Real4
+from config import Virtual4, Real4, GlobalConfig
 from enums import *
 
 check_path = '/home/martin/git/pydirectord/checks/'
 
 checks = dict()
 
-
-def cb_running(_, virtual, real):
+def cb_running(_, virtual, real, global_config):
     print(real.ip.exploded + ":" + str(real.port) + "\tOK")
     # TODO: handle real online
 
 
-def cb_error(_, virtual, real):
+def cb_error(_, virtual, real, global_config):
     print(real.ip.exploded + ":" + str(real.port) + "\tNOK")
     # TODO: handle real offline
 
 
-def cb_repeat(_, virtual, real):
-    checkinterval = virtual.checkinterval if virtual.checkinterval else 2  # TODO: take from global config
-    reactor.callLater(checkinterval, do_check, virtual, real)
+def cb_repeat(_, virtual, real, global_config):
+    checkinterval = virtual.checkinterval if virtual.checkinterval else global_config.checkinterval
+    reactor.callLater(checkinterval, do_check, virtual, real, global_config)
 
 
 def prepare_check_modules():
@@ -37,17 +36,17 @@ def prepare_check_modules():
                 print("The module '" + module_name + "' does not seem to be a valid check module.")
 
 
-def initialize_checks(virtuals):
+def initialize_checks(virtuals, global_config):
     for virtual in virtuals:
         for real in virtual.real:
-            do_check(virtual, real)
+            do_check(virtual, real, global_config)
 
 
-def do_check(virtual, real):
-    d = checks[virtual.service].check(virtual, real)
-    d.addCallback(cb_running, virtual, real)
-    d.addErrback(cb_error, virtual, real)
-    d.addBoth(cb_repeat, virtual, real)
+def do_check(virtual, real, global_config):
+    d = checks[virtual.service].check(virtual, real, global_config)
+    d.addCallback(cb_running, virtual, real, global_config)
+    d.addErrback(cb_error, virtual, real, global_config)
+    d.addBoth(cb_repeat, virtual, real, global_config)
 
 
 def parse_args(args):
@@ -65,6 +64,8 @@ def parse_config(file):
 def main():
     prepare_check_modules()
 
+    global_config = GlobalConfig(checkinterval=1)
+
     virtual = Virtual4(ip="129.187.43.210", port=80, service="http", request="check.php", receive="Running",
                        protocol=Protocol.tcp)
     real1 = Real4(ip="10.150.253.10", port=80, method=ForwardingMethod.gate)
@@ -74,7 +75,7 @@ def main():
     virtual.add_real(real2)
     virtual.add_real(real3)
 
-    initialize_checks([virtual])
+    initialize_checks([virtual], global_config)
 
     reactor.run()
 

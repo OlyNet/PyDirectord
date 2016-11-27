@@ -24,7 +24,7 @@ def __cb_response(response, deferred):
     d.addCallback(__cb_received_body, deferred=deferred)
 
 
-def check(virtual, real):
+def check(virtual, real, global_config):
     # setup parameters
     if virtual.httpmethod == HTTPMethod.GET:
         method = b'GET'
