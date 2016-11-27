@@ -69,19 +69,17 @@ class __Virtual(object):
         else:
             raise ValueError
 
-        if isinstance(service, Service):
+        if isinstance(service, basestring):
             self.service = service
         elif service is None:
             self.service = None
         else:
             raise ValueError
 
-        if checkport is None and self.service is not None:
-            self.checkport = self.service.value
-        elif checkport is None and self.service is None:
-            self.checkport = None
-        elif isinstance(checkport, int) and 0 < checkport <= 65535:
+        if isinstance(checkport, int) and 0 < checkport <= 65535:
             self.checkport = checkport
+        elif checkport is None:
+            self.checkport = port
         else:
             raise ValueError
 
