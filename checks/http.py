@@ -8,7 +8,7 @@ from enums import *
 
 def __cb_check_body(body, receive):
     if body != receive:
-        raise UnexpectedResult()
+        raise UnexpectedResult("got '" + body + "' expected '" + receive + "'")
 
 
 def __cb_received_body(body, deferred):
