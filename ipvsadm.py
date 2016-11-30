@@ -11,6 +11,13 @@ def initial_ipvs_setup(virtuals, global_config):
     for virtual in virtuals:
         quiescent = virtual.quiescent if virtual.quiescent is not None else global_config.quiescent
 
+        # delete the virtual service in case it might be present
+        try:
+            delete_virtual_service(virtual, global_config, True)
+        except subprocess.CalledProcessError:
+            # TODO: sensible logging
+            pass  # this will happen quite often
+
         # add the virtual service
         add_virtual_service(virtual, global_config, True)
 
