@@ -1,4 +1,5 @@
 import subprocess
+import sys
 
 from twisted.internet import reactor
 from twisted.internet.protocol import ProcessProtocol
@@ -8,27 +9,49 @@ from enums import *
 
 
 def initial_ipvs_setup(virtuals, global_config):
+    global_config.log.info("Beginning initial ipvs table setup")
     for virtual in virtuals:
         quiescent = virtual.quiescent if virtual.quiescent is not None else global_config.quiescent
+        virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
 
         # delete the virtual service in case it might be present
         try:
             delete_virtual_service(virtual, global_config, True)
         except subprocess.CalledProcessError:
-            # TODO: sensible logging
-            pass  # this will happen quite often
+            global_config.log.debug(
+                "Deleting the virtual service for " + virtual_hostname + " failed during initialization")
 
         # add the virtual service
-        add_virtual_service(virtual, global_config, True)
+        global_config.log.info("Adding virtual service for " + virtual_hostname)
+        try:
+            add_virtual_service(virtual, global_config, True)
+        except subprocess.CalledProcessError:
+            global_config.log.critical(
+                "Adding the virtual service for " + virtual_hostname + " failed during initialization")
+            sys.exit(1)
 
         # loop all real servers and set them up if we quiescent
         if quiescent:
             for real in virtual.real:
-                add_real_server(virtual, real, global_config, True)
+                real_hostname = real.ip.exploded + ":" + str(real.port)
+                global_config.log.info("Adding real server " + real_hostname)
+                try:
+                    add_real_server(virtual, real, global_config, True)
+                except subprocess.CalledProcessError:
+                    global_config.log.critical(
+                        "Adding the real server " + real_hostname + " failed during initialization")
+                    sys.exit(1)
 
         # add the fallback if it exists
         if virtual.fallback is not None:
-            add_real_server(virtual, virtual.fallback, global_config, True)
+            global_config.log.info("Adding fallback server for " + virtual_hostname)
+            try:
+                add_real_server(virtual, virtual.fallback, global_config, True)
+            except:
+                global_config.log.critical(
+                    "Adding the fallback server for " + virtual_hostname + " failed during initialization")
+                sys.exit(1)
+    global_config.log.info("Initial ipvs table setup done")
 
 
 def add_virtual_service(virtual, global_config, sync=False):
@@ -52,14 +75,14 @@ def add_virtual_service(virtual, global_config, sync=False):
     args.append("-s")
     args.append(virtual.scheduler.name)
 
-    print(args)
+    global_config.log.debug(args)
 
     # execute the prepared command
     if sync:
         args[0] = external.ipvsadm_path
-        subprocess.check_call(args)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).check_returncode()
     else:
-        reactor.spawnProcess(__IPVSProcessProtocol(), external.ipvsadm_path, args, {})
+        reactor.spawnProcess(__IPVSProcessProtocol(global_config), external.ipvsadm_path, args, {})
 
     # set is_present
     virtual.is_present = True
@@ -82,14 +105,14 @@ def delete_virtual_service(virtual, global_config, sync=False):
     virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
     args.append(virtual_hostname)
 
-    print(args)
+    global_config.log.debug(args)
 
     # execute the prepared command
     if sync:
         args[0] = external.ipvsadm_path
-        subprocess.check_call(args)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).check_returncode()
     else:
-        reactor.spawnProcess(__IPVSProcessProtocol(), external.ipvsadm_path, args, {})
+        reactor.spawnProcess(__IPVSProcessProtocol(global_config), external.ipvsadm_path, args, {})
 
     # set is_present
     virtual.is_present = False
@@ -116,14 +139,14 @@ def edit_virtual_service(virtual, global_config, sync=False):
     args.append("-s")
     args.append(virtual.scheduler.name)
 
-    print(args)
+    global_config.log.debug(args)
 
     # execute the prepared command
     if sync:
         args[0] = external.ipvsadm_path
-        subprocess.check_call(args)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).check_returncode()
     else:
-        reactor.spawnProcess(__IPVSProcessProtocol(), external.ipvsadm_path, args, {})
+        reactor.spawnProcess(__IPVSProcessProtocol(global_config), external.ipvsadm_path, args, {})
 
     # set is_present
     virtual.is_present = True
@@ -165,14 +188,14 @@ def add_real_server(virtual, real, global_config, sync=False):
     args.append("-w")
     args.append(str(real.current_weight))
 
-    print(args)
+    global_config.log.debug(args)
 
     # execute the prepared command
     if sync:
         args[0] = external.ipvsadm_path
-        subprocess.check_call(args)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).check_returncode()
     else:
-        reactor.spawnProcess(__IPVSProcessProtocol(), external.ipvsadm_path, args, {})
+        reactor.spawnProcess(__IPVSProcessProtocol(global_config), external.ipvsadm_path, args, {})
 
     # set is_present
     real.is_present = True
@@ -200,14 +223,14 @@ def delete_real_server(virtual, real, global_config, sync=False):
     real_hostname = real.ip.exploded + ":" + str(real.port)
     args.append(real_hostname)
 
-    print(args)
+    global_config.log.debug(args)
 
     # execute the prepared command
     if sync:
         args[0] = external.ipvsadm_path
-        subprocess.check_call(args)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).check_returncode()
     else:
-        reactor.spawnProcess(__IPVSProcessProtocol(), external.ipvsadm_path, args, {})
+        reactor.spawnProcess(__IPVSProcessProtocol(global_config), external.ipvsadm_path, args, {})
 
     # set is_present
     real.is_present = False
@@ -249,25 +272,29 @@ def edit_real_server(virtual, real, global_config, sync=False):
     args.append("-w")
     args.append(str(real.current_weight))
 
-    print(args)
+    global_config.log.debug(args)
 
     # execute the prepared command
     if sync:
         args[0] = external.ipvsadm_path
-        subprocess.check_call(args)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).check_returncode()
     else:
-        reactor.spawnProcess(__IPVSProcessProtocol(), external.ipvsadm_path, args, {})
+        reactor.spawnProcess(__IPVSProcessProtocol(global_config), external.ipvsadm_path, args, {})
 
     # set is_present
     real.is_present = True
 
 
 class __IPVSProcessProtocol(ProcessProtocol):
+    def __init__(self, global_config):
+        self.global_config = global_config
+
     def connectionMade(self):
         self.transport.closeStdin()
 
     def errReceived(self, data):
-        print("stderr: " + data)
+        self.global_config.log.error("Error from 'ipvsadm': " + str(data))
 
     def outReceived(self, data):
-        print("stdout: " + data)
+        if data is not None:
+            self.global_config.log.debug("From 'ipvsadm': " + str(data))

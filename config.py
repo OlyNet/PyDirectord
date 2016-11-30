@@ -65,6 +65,8 @@ class GlobalConfig(object):
         else:
             raise ValueError
 
+        self.log = None
+
 
 class __Virtual(object):
     """

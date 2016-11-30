@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
-# coding=UTF-8
 """
 PyDirectord is a rewrite of 'ldirectord' in python using the twisted framework.
 """
+import logging
+import os
+from importlib import import_module
+from subprocess import CalledProcessError
+
+from twisted.internet import reactor
+
+import external
+import ipvsadm
+from config import Virtual4, Real4, Fallback4, GlobalConfig
+from enums import *
+
 __author__ = "Martin Herrmann"
 __copyright__ = "Copyright 2016, Martin Herrmann"
 __credits__ = ["Martin Herrmann"]
@@ -11,16 +22,6 @@ __version__ = "0.9"
 __maintainer__ = "Martin Herrmann"
 __email__ = "martin.herrmann@tum.de"
 __status__ = "Alpha"
-
-import os
-from importlib import import_module
-
-from twisted.internet import reactor
-
-import external
-import ipvsadm
-from config import Virtual4, Real4, Fallback4, GlobalConfig
-from enums import *
 
 # this dictionary will eventually contain all check modules
 checks = dict()
@@ -37,7 +38,11 @@ def cb_running(_, virtual, real, global_config):
     :param global_config: the global configuration object.
     :return: nothing
     """
-    print(real.ip.exploded + ":" + str(real.port) + "\tOK")
+    # determine specific configuration for this service
+    virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
+    real_hostname = real.ip.exploded + ":" + str(real.port)
+
+    global_config.log.debug(real_hostname + "\tOK")
 
     # reset failure count
     real.failcount = 0
@@ -46,6 +51,7 @@ def cb_running(_, virtual, real, global_config):
     if not real.is_present or real.current_weight < real.weight:
         real.current_weight = real.weight
 
+        global_config.log.info("Setting real " + real_hostname + " to " + str(real.current_weight))
         if real.is_present:
             ipvsadm.edit_real_server(virtual, real, global_config)
         else:
@@ -58,7 +64,7 @@ def cb_running(_, virtual, real, global_config):
 
             # remove it
             if fallback.is_present:
-                print("Removing ipvs entry for fallback")
+                global_config.log.info("Removing fallback from " + virtual_hostname)
                 ipvsadm.delete_real_server(virtual, fallback, global_config)
             else:
                 pass  # nothing to do
@@ -75,37 +81,42 @@ def cb_error(_, virtual, real, global_config):
     :param global_config: the global configuration object.
     :return: nothing
     """
-    print(real.ip.exploded + ":" + str(real.port) + "\tNOK")
-
-    real.failcount += 1
-
     # determine specific configuration for this service
     failurecount = virtual.failurecount if virtual.failurecount else global_config.failurecount
     quiescent = virtual.quiescent if virtual.quiescent is not None else global_config.quiescent
     readdquiescent = virtual.readdquiescent if virtual.readdquiescent is not None else global_config.readdquiescent
+    virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
+    real_hostname = real.ip.exploded + ":" + str(real.port)
+
+    global_config.log.debug(real_hostname + "\tNOK")
+
+    real.failcount += 1
 
     # check if we have reached the maximal permitted failure count
     if real.failcount >= failurecount:
         real.failcount = failurecount  # prevent infinite growth of this value
 
-        # just weight to zero or delete real server altogether depending on quiescent
+        # just set weight to zero or delete real server altogether depending on quiescent
         if quiescent:
             if real.is_present:
                 if real.current_weight == 0:
                     pass  # nothing to do
                 else:
                     real.current_weight = 0
+                    global_config.log.info("Setting real " + real_hostname + " to " + str(real.current_weight))
                     ipvsadm.edit_real_server(virtual, real, global_config)
             else:
                 if readdquiescent:
                     real.current_weight = 0
+                    global_config.log.info("Adding real " + real_hostname + " with " + str(real.current_weight)
+                                 + " due to readdquiescent")
                     ipvsadm.add_real_server(virtual, real, global_config)
                 else:
                     pass  # nothing to do
         else:
             real.current_weight = 0
             if real.is_present:
-                print("Removing ipvs entry for real")
+                global_config.log.info("Removing real " + real_hostname)
                 ipvsadm.delete_real_server(virtual, real, global_config)
             else:
                 pass  # nothing to do
@@ -120,8 +131,10 @@ def cb_error(_, virtual, real, global_config):
         if not fallback.is_present or fallback.current_weight < 1:
             fallback.current_weight = 1
             if not fallback.is_present:
+                global_config.log.info("Adding fallback for " + virtual_hostname)
                 ipvsadm.add_real_server(virtual, fallback, global_config)
             else:
+                global_config.log.info("Setting fallback for " + virtual_hostname + " to " + str(fallback.current_weight))
                 ipvsadm.edit_real_server(virtual, fallback, global_config)
 
 
@@ -136,29 +149,34 @@ def cb_repeat(_, virtual, real, global_config):
     :param global_config: the global configuration object.
     :return: nothing
     """
+    # determine specific configuration for this service
     checkinterval = virtual.checkinterval if virtual.checkinterval else global_config.checkinterval
+
+    # schedule check in the future
     reactor.callLater(checkinterval, do_check, virtual, real, global_config)
 
 
-def prepare_check_modules():
+def prepare_check_modules(global_config):
     """
     Loads all check-modules present in the correct path.
 
     :return: nothing
     """
+    global_config.log.info("Beginning with check-module loading...")
     for fn in os.listdir(external.check_path):
         if os.path.isfile(external.check_path + fn) and fn != "__init__.py" and fn.endswith(".py"):
             module_name = fn[:-3]
             checks[module_name] = import_module('checks.' + module_name)
             if hasattr(checks[module_name], 'check'):
-                print("Check module '" + module_name + "' has been successfully imported.")
+                global_config.log.info("Check-module '" + module_name + "' has been successfully loaded")
             else:
-                print("The module '" + module_name + "' does not seem to be a valid check module.")
+                global_config.log.error("The module '" + module_name + "' does not seem to be a valid check-module")
                 checks[module_name] = None
+    global_config.log.info("Check-module loading done")
 
 
 def initialize_checks(virtuals, global_config):
-    # do the initial setup within ipvsadm
+    # perform the initial setup within ipvsadm
     ipvsadm.initial_ipvs_setup(virtuals, global_config)
 
     # queue up the check jobs
@@ -171,14 +189,23 @@ def cleanup(virtuals, global_config):
     if global_config.cleanstop:
         for virtual in virtuals:
             if virtual.is_present:
-                ipvsadm.delete_virtual_service(virtual, global_config, sync=True)
+                virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
+                global_config.log.info("Removing virtual service " + virtual_hostname)
+                try:
+                    ipvsadm.delete_virtual_service(virtual, global_config, sync=True)
+                except CalledProcessError:
+                    global_config.log.error("Could not remove virtual service " + virtual_hostname)
 
 
 def do_check(virtual, real, global_config):
-    d = checks[virtual.service].check(virtual, real, global_config)
-    d.addCallback(cb_running, virtual, real, global_config)
-    d.addErrback(cb_error, virtual, real, global_config)
-    d.addBoth(cb_repeat, virtual, real, global_config)
+    if not checks[virtual.service]:
+        global_config.log.error("No check-module found for " + virtual.service)
+    else:
+        # TODO: currently assumes 'negotiate'
+        d = checks[virtual.service].check(virtual, real, global_config)
+        d.addCallback(cb_running, virtual, real, global_config)
+        d.addErrback(cb_error, virtual, real, global_config)
+        d.addBoth(cb_repeat, virtual, real, global_config)
 
 
 def parse_args():
@@ -199,8 +226,6 @@ def parse_config(file):
 
 
 def main():
-    prepare_check_modules()
-
     # parse the command-line arguments
     config_file = parse_args()
 
@@ -226,6 +251,16 @@ def main():
     #
     # STOP DEBUG
     #
+
+    # setup Logger
+    global_config.log = logging.getLogger("PyDirectord")
+    global_config.log.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+    global_config.log.addHandler(handler)
+
+    # prepare the check-modules
+    prepare_check_modules(global_config)
 
     # perform the final preparations before starting the reactor
     initialize_checks(virtuals, global_config)
