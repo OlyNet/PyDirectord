@@ -71,11 +71,11 @@ class __Virtual(object):
     Base-class for virtual server configuration.
     """
 
-    def __init__(self, port, checktimeout=None, negotiatetimeout=None, checkinterval=None, cleanstop=None,
-                 checktype=Checktype.negotiate, emailalert=None, emailalertfrom=None, quiescent=None, service=None,
-                 checkcommand=None, checkport=None, request=None, receive=None, httpmethod=HTTPMethod.GET,
-                 virtualhost=None, login=None, passwd=None, database=None, secret=None, scheduler=Scheduler.wrr,
-                 persistent=None, netmask=None, protocol=None):
+    def __init__(self, port, checktimeout=None, negotiatetimeout=None, checkinterval=None, failurecount=None,
+                 cleanstop=None, checktype=Checktype.negotiate, emailalert=None, emailalertfrom=None, quiescent=None,
+                 readdquiescent=True, service=None, checkcommand=None, checkport=None, request=None, receive=None,
+                 httpmethod=HTTPMethod.GET, virtualhost=None, login=None, passwd=None, database=None, secret=None,
+                 scheduler=Scheduler.wrr, persistent=None, netmask=None, protocol=None):
         self.ip = None
 
         if isinstance(port, int) and 0 < port <= 65535:
@@ -104,6 +104,13 @@ class __Virtual(object):
         else:
             raise ValueError
 
+        if isinstance(failurecount, int) and failurecount > 0:
+            self.failurecount = failurecount
+        elif failurecount is None:
+            self.failurecount = None
+        else:
+            raise ValueError
+
         if isinstance(checktype, Checktype):
             self.checktype = checktype
         else:
@@ -113,6 +120,13 @@ class __Virtual(object):
             self.quiescent = quiescent
         elif quiescent is None:
             self.quiescent = None
+        else:
+            raise ValueError
+
+        if isinstance(readdquiescent, bool):
+            self.readdquiescent = readdquiescent
+        elif readdquiescent is None:
+            self.readdquiescent = None
         else:
             raise ValueError
 
@@ -166,6 +180,9 @@ class __Virtual(object):
         else:
             raise ValueError
 
+        # variable initialization
+        self.is_present = False
+
 
 class Virtual4(__Virtual):
     """
@@ -210,6 +227,7 @@ class __Real(object):
     def __init__(self, port, method, weight=1, request=None, receive=None):
         self.ip = None
 
+        # check for valid port
         if isinstance(port, int) and 0 < port <= 65535:
             self.port = port
         else:
@@ -220,7 +238,8 @@ class __Real(object):
         else:
             raise ValueError
 
-        if isinstance(weight, int) and weight >= 0:
+        # check for valid weight
+        if isinstance(weight, int) and 0 <= weight <= 65535:
             self.weight = weight
         else:
             raise ValueError
@@ -241,6 +260,8 @@ class __Real(object):
 
         # variable initialization
         self.failcount = 0
+        self.current_weight = 0
+        self.is_present = False
 
 
 class Real4(__Real):
@@ -261,7 +282,25 @@ class __Fallback(object):
     """
     Base-class for fallback server configuration
     """
-    pass
+
+    def __init__(self, port, method):
+        self.ip = None
+
+        # check for valid port
+        if isinstance(port, int) and 0 < port <= 65535:
+            self.port = port
+        else:
+            raise ValueError
+
+        if isinstance(method, ForwardingMethod):
+            self.method = method
+        else:
+            raise ValueError
+
+        # variable initialization
+        self.weight = 1
+        self.current_weight = 1
+        self.is_present = False
 
 
 class Fallback4(__Fallback):
@@ -269,14 +308,10 @@ class Fallback4(__Fallback):
     Configuration of an IPv4 fallback server.
     """
 
-    def __init__(self, ip, port):
+    def __init__(self, ip, **kwargs):
+        super(Fallback4, self).__init__(**kwargs)
+
         # check for valid IPv4
         self.ip = ipaddress.ip_address(ip)
         if self.ip.version != 4:
-            raise ValueError
-
-        # check for valid port
-        if isinstance(self.port, int) and 0 > port <= 65535:
-            self.port = port
-        else:
             raise ValueError

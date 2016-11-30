@@ -26,6 +26,8 @@ def __cb_response(response, deferred):
 
 def check(virtual, real, global_config):
     # setup parameters
+    timeout = virtual.negotiatetimeout if virtual.negotiatetimeout else global_config.negotiatetimeout
+
     if virtual.httpmethod == HTTPMethod.GET:
         method = b'GET'
     elif virtual.httpmethod == HTTPMethod.HEAD:
@@ -44,7 +46,7 @@ def check(virtual, real, global_config):
     deferred.addCallback(__cb_check_body, receive)
 
     # make request
-    agent = Agent(reactor)
+    agent = Agent(reactor, connectTimeout=timeout)
     d = agent.request(method, uri, None, None)
     d.addCallback(__cb_response, deferred=deferred)
     d.addErrback(__cb_error, deferred=deferred)
