@@ -7,6 +7,8 @@ import signal
 import sys
 import time
 
+from enums import *
+
 
 class Daemon:
     """A generic daemon class.
@@ -114,6 +116,30 @@ class Daemon:
             else:
                 print(str(err.args))
                 sys.exit(1)
+
+    def __get_status(self):
+        try:
+            pf = open(self.pidfile, 'r')
+            pid = int(pf.read().strip())
+            pf.close()
+        except IOError:
+            return ServerStatus.stopped
+
+        try:
+            procfile = open("/proc/%d/status" % pid, 'r')
+            procfile.close()
+        except IOError:
+            return ServerStatus.stopped
+        except TypeError:
+            return ServerStatus.stopped
+
+        return ServerStatus.running
+
+    def status(self):
+        if self.__get_status() == ServerStatus.stopped:
+            print("PyDirectord is stopped.")
+        elif self.__get_status() == ServerStatus.running:
+            print("PyDirectord is running.")
 
     def restart(self):
         """Restart the daemon."""

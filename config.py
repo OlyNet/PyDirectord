@@ -75,6 +75,7 @@ class GlobalConfig(object):
         self.log = None
         self.log_level = logging.INFO
         self.checks = dict()
+        self.initial_action = None
 
 
 class __Virtual(object):

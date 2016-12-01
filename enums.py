@@ -28,6 +28,8 @@ class ServerStatus(Enum):
     running = 1
     stopping = 2
     reloading = 3
+    stopped = 4
+    unknown = 5
     all = 255
 
 
@@ -73,3 +75,11 @@ class Protocol(Enum):
     tcp = 0
     udp = 1
     fwm = 3
+
+
+class Action(Enum):
+    start = 0
+    stop = 1
+    restart = 2
+    reload = 3
+    status = 4

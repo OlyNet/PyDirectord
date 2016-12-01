@@ -138,6 +138,20 @@ def __cb_repeat(_, virtual, real, global_config):
     reactor.callLater(checkinterval, do_check, virtual, real, global_config)
 
 
+def __cb_unexpected_failure(failure, virtual, real, global_config):
+    """
+    Deal with unexpected failures.
+    :param reason:
+    :param virtual:
+    :param real:
+    :param global_config:
+    :return:
+    """
+    global_config.critical("Something went terribly wrong: " % str(failure.value))
+    failure.printDetailedTraceback()
+    reactor.stop()
+
+
 def prepare_check_modules(global_config):
     """
     Loads all check-modules present in the correct path.
@@ -168,6 +182,8 @@ def initialize(virtuals, global_config):
 
 
 def cleanup(virtuals, global_config):
+    global_config.log.info("Received SIGTERM, starting cleanup...")
+
     if global_config.cleanstop:
         for virtual in virtuals:
             if virtual.is_present:
@@ -187,4 +203,5 @@ def do_check(virtual, real, global_config):
         d = global_config.checks[virtual.service].check(virtual, real, global_config)
         d.addCallback(__cb_running, virtual, real, global_config)
         d.addErrback(__cb_error, virtual, real, global_config)
-        d.addBoth(__cb_repeat, virtual, real, global_config)
+        d.addCallback(__cb_repeat, virtual, real, global_config)
+        d.addErrback(__cb_unexpected_failure, virtual, real, global_config)

@@ -5,6 +5,7 @@ PyDirectord is a rewrite of 'ldirectord' in python using the twisted framework.
 import logging
 import optparse
 import os
+import sys
 
 from twisted.internet import reactor
 
@@ -25,7 +26,7 @@ __status__ = "Alpha"
 
 
 def parse_args():
-    usage = """%prog [options]
+    usage = """%prog [options] start | stop | restart | status
 
     PyDirectord Copyright (C) 2016 Martin Herrmann
     This program comes with ABSOLUTELY NO WARRANTY.
@@ -46,6 +47,28 @@ def parse_args():
     if options.debug:
         global_config.supervised = True
         global_config.log_level = logging.DEBUG
+
+    # determine initial action
+    action = args[0]
+    if action is None:
+        if global_config.supervised:
+            pass  # nothing to do, this is fine
+        else:
+            print("No action specified, terminating...", file=sys.stderr)
+            sys.exit(1)
+    elif action == "start":
+        global_config.initial_action = Action.start
+    elif action == "stop":
+        global_config.initial_action = Action.stop
+    elif action == "restart":
+        global_config.initial_action = Action.restart
+    elif action == "reload":
+        global_config.initial_action = Action.reload
+    elif action == "status":
+        global_config.initial_action = Action.status
+    else:
+        print("Unknown action '%s', terminating..." % action, file=sys.stderr)
+        sys.exit(1)
 
     return global_config, virtuals
 
@@ -91,28 +114,54 @@ def main():
     handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
     global_config.log.addHandler(handler)
 
+    # check whether to daemonize or not
+    if global_config.supervised:
+        start_reactor(virtuals, global_config)
+    else:
+        pidfile = external.pid_path + "pydirectord." + os.path.basename(global_config.configfile) + ".pid"
+
+        pydirectord = PyDirectorDaemon(pidfile, virtuals, global_config)
+        if not global_config.initial_action:
+            print("No action specified, terminating...", file=sys.stderr)
+            sys.exit(1)
+        elif global_config.initial_action == Action.start:
+            global_config.log.info("Daemonizing with pid file " + pidfile)
+            pydirectord.start()
+        elif global_config.initial_action == Action.stop:
+            pydirectord.stop()
+        elif global_config.initial_action == Action.restart:
+            pydirectord.restart()
+        elif global_config.initial_action == Action.status:
+            pydirectord.status()
+        elif global_config.initial_action == Action.reload:
+            pydirectord.restart()  # FIXME: actually reload instead of restarting
+        else:
+            raise NotImplementedError("daemon action not yet implemented")
+
+        sys.exit(0)
+
+
+def start_reactor(virtuals, global_config):
+    """
+    Does everything necessary before (and including) starting the reactor. This should be the last thing called when
+    starting PyDirectord.
+
+    :param virtuals: the list containing all virtual services.
+    :param global_config: the global configuration
+    :return: nothing
+    """
     # prepare the check-modules
     check.prepare_check_modules(global_config)
 
     # perform the final preparations before starting the reactor
     check.initialize(virtuals, global_config)
 
-    if global_config.supervised:
-        start_reactor(virtuals, global_config)
-    else:
-        pidfile = external.pid_path + "pydirectord." + os.path.basename(global_config.configfile) + ".pid"
-        global_config.log.info("Daemonizing with pid file " + pidfile)
-
-        pydirectord = PyDirectorDaemon(pidfile, virtuals, global_config)
-        pydirectord.start()
-
-
-def start_reactor(virtuals, global_config):
     # configure cleanup on reactor shutdown
     reactor.addSystemEventTrigger("before", "shutdown", check.cleanup, virtuals, global_config)
 
     # run the reactor
     reactor.run()
+
 
 class PyDirectorDaemon(Daemon):
     def __init__(self, pidfile, virtuals, global_config):
