@@ -4,8 +4,10 @@ from subprocess import CalledProcessError
 
 from twisted.internet import reactor
 
+import connect
 import external
 import ipvsadm
+from enums import Checktype
 
 
 def __cb_running(_, virtual, real, global_config):
@@ -51,7 +53,7 @@ def __cb_running(_, virtual, real, global_config):
                 pass  # nothing to do
 
 
-def __cb_error(_, virtual, real, global_config):
+def __cb_error(failure, virtual, real, global_config):
     """
     Function called when the outcome of a check-module was negative. Used to update the ipvs table of the kernel if
     necessary.
@@ -69,7 +71,7 @@ def __cb_error(_, virtual, real, global_config):
     virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
     real_hostname = real.ip.exploded + ":" + str(real.port)
 
-    global_config.log.debug(real_hostname + "\tNOK")
+    global_config.log.debug(real_hostname + "\tNOK: %s" % failure.value)
 
     real.failcount += 1
 
@@ -196,12 +198,19 @@ def cleanup(virtuals, global_config):
 
 
 def do_check(virtual, real, global_config):
-    if not global_config.checks[virtual.service]:
-        global_config.log.error("No check-module found for " + virtual.service)
+    if virtual.checktype == Checktype.negotiate:
+        if not global_config.checks[virtual.service]:
+            global_config.log.error("No check-module found for " + virtual.service)
+            return
+        else:
+            module = global_config.checks[virtual.service]
+    elif virtual.checktype == Checktype.connect:
+        module = connect
     else:
-        # FIXME: currently assumes 'negotiate'
-        d = global_config.checks[virtual.service].check(virtual, real, global_config)
-        d.addCallback(__cb_running, virtual, real, global_config)
-        d.addErrback(__cb_error, virtual, real, global_config)
-        d.addCallback(__cb_repeat, virtual, real, global_config)
-        d.addErrback(__cb_unexpected_failure, virtual, real, global_config)
+        raise NotImplementedError(virtual.checktype)
+
+    d = module.check(virtual, real, global_config)
+    d.addCallback(__cb_running, virtual, real, global_config)
+    d.addErrback(__cb_error, virtual, real, global_config)
+    d.addCallback(__cb_repeat, virtual, real, global_config)
+    d.addErrback(__cb_unexpected_failure, virtual, real, global_config)

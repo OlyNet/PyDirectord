@@ -198,7 +198,7 @@ class __Virtual(object):
 
 class Virtual4(__Virtual):
     """
-    Configuration of a IPv4 virtual server.
+    Configuration of an IPv4 virtual server.
     """
 
     def __init__(self, ip, **kwargs):
@@ -224,6 +224,41 @@ class Virtual4(__Virtual):
 
     def set_fallback(self, fallback=None):
         if isinstance(fallback, Fallback4):
+            self.fallback = fallback
+        elif fallback is None:
+            self.fallback = None
+        else:
+            raise ValueError
+
+
+class Virtual6(__Virtual):
+    """
+    Configuration of an IPv6 virtual server.
+    """
+
+    def __init__(self, ip, **kwargs):
+        super(Virtual6, self).__init__(**kwargs)
+
+        # check for valid IPv6
+        self.ip = ipaddress.ip_address(ip)
+        if self.ip.version != 6:
+            raise ValueError
+
+        # variable initialization
+        self.fallback = None
+        self.real = []
+
+    def add_real(self, real):
+        if isinstance(real, Real6):
+            self.real.append(real)
+        else:
+            raise ValueError
+
+    def remove_real(self, real):
+        self.real.remove(real)
+
+    def set_fallback(self, fallback=None):
+        if isinstance(fallback, Fallback6):
             self.fallback = fallback
         elif fallback is None:
             self.fallback = None
@@ -290,6 +325,20 @@ class Real4(__Real):
             raise ValueError
 
 
+class Real6(__Real):
+    """
+    Configuration of an IPv6 real server.
+    """
+
+    def __init__(self, ip, **kwargs):
+        super(Real6, self).__init__(**kwargs)
+
+        # check for valid IPv4
+        self.ip = ipaddress.ip_address(ip)
+        if self.ip.version != 6:
+            raise ValueError
+
+
 class __Fallback(object):
     """
     Base-class for fallback server configuration
@@ -326,4 +375,18 @@ class Fallback4(__Fallback):
         # check for valid IPv4
         self.ip = ipaddress.ip_address(ip)
         if self.ip.version != 4:
+            raise ValueError
+
+
+class Fallback6(__Fallback):
+    """
+    Configuration of an IPv6 fallback server.
+    """
+
+    def __init__(self, ip, **kwargs):
+        super(Fallback6, self).__init__(**kwargs)
+
+        # check for valid IPv4
+        self.ip = ipaddress.ip_address(ip)
+        if self.ip.version != 6:
             raise ValueError

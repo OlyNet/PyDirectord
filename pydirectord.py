@@ -49,7 +49,7 @@ def parse_args():
         global_config.log_level = logging.DEBUG
 
     # determine initial action
-    action = args[0]
+    action = args[0] if len(args) >= 1 else None
     if action is None:
         if global_config.supervised:
             pass  # nothing to do, this is fine
@@ -79,19 +79,29 @@ def parse_config(configfile):
     #
     # START DEBUG
     #
-    virtual = Virtual4(ip="192.168.178.2", port=80, service="http", request="check.php", receive="Running",
+    virtual1 = Virtual4(ip="192.168.178.2", port=80, service="http", request="check.php", receive="Running",
                        protocol=Protocol.tcp)
     real1 = Real4(ip="10.150.253.10", port=80, method=ForwardingMethod.gate)
     real2 = Real4(ip="10.150.253.11", port=80, method=ForwardingMethod.gate)
     real3 = Real4(ip="10.150.253.20", port=80, method=ForwardingMethod.gate)
-    fallback = Fallback4(ip="127.0.0.1", port=80, method=ForwardingMethod.gate)
-    virtual.add_real(real1)
-    virtual.add_real(real2)
-    virtual.add_real(real3)
-    virtual.set_fallback(fallback)
+    fallback1 = Fallback4(ip="127.0.0.1", port=80, method=ForwardingMethod.gate)
+    virtual1.add_real(real1)
+    virtual1.add_real(real2)
+    virtual1.add_real(real3)
+    virtual1.set_fallback(fallback1)
+
+    virtual2 = Virtual4(ip="192.168.178.2", port=443, protocol=Protocol.tcp, checktype=Checktype.connect)
+    real4 = Real4(ip="10.150.253.10", port=443, method=ForwardingMethod.gate)
+    real5 = Real4(ip="10.150.253.11", port=443, method=ForwardingMethod.gate)
+    real6 = Real4(ip="10.150.253.20", port=443, method=ForwardingMethod.gate)
+    fallback2 = Fallback4(ip="127.0.0.1", port=443, method=ForwardingMethod.gate)
+    virtual2.add_real(real4)
+    virtual2.add_real(real5)
+    virtual2.add_real(real6)
+    virtual2.set_fallback(fallback2)
 
     global_config = GlobalConfig(checkinterval=2, negotiatetimeout=5)
-    virtuals = [virtual]
+    virtuals = [virtual1, virtual2]
     #
     # STOP DEBUG
     #
