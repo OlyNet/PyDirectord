@@ -1,4 +1,5 @@
 import ipaddress
+import logging
 
 from pyparsing import basestring
 
@@ -14,7 +15,7 @@ class GlobalConfig(object):
                  callback=None, fallback=None, fallbackcommand=None, logfile="/var/log/pydirectord.log",
                  emailalert=None, emailalertfrom=None, emailalertfreq=0, emailalertstatus=ServerStatus.all,
                  smtp=None, execute=None, supervised=False, quiescent=True, readdquiescent=True, cleanstop=True,
-                 maintenancedir=None):
+                 maintenancedir=None, configfile="/etc/pydirectord/pydirectord.conf"):
         if isinstance(checktimeout, int) and checktimeout > 0:
             self.checktimeout = checktimeout
         else:
@@ -65,7 +66,15 @@ class GlobalConfig(object):
         else:
             raise ValueError
 
+        if isinstance(configfile, basestring):
+            self.configfile = configfile
+        else:
+            raise ValueError
+
+        # variable initialization
         self.log = None
+        self.log_level = logging.INFO
+        self.checks = dict()
 
 
 class __Virtual(object):
