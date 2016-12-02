@@ -35,11 +35,11 @@ def check(virtual, real, global_config):
     else:
         raise ValueError
 
+    host = (virtual.virtualhost if virtual.virtualhost else real.ip.exploded).encode()
+    port = (virtual.checkport if virtual.checkport else real.port).encode()
     path = (real.request if real.request else virtual.request).encode()
-    host = virtual.virtualhost if virtual.virtualhost else real.ip.exploded.encode()
-    port = virtual.checkport if virtual.checkport else real.port
 
-    uri = b'http://' + host + b":" + str(port).encode() + b'/' + path
+    uri = b'http://' + host + b":" + port + b'/' + path
 
     # prepare deferred
     receive = (real.receive if real.receive else virtual.receive).encode()

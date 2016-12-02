@@ -76,6 +76,12 @@ class GlobalConfig(object):
         self.log_level = logging.INFO
         self.checks = dict()
         self.initial_action = None
+        self.last_modified = 0
+
+        # restart capabilities
+        self.action_on_stop = None
+        self.new_global_config = None
+        self.new_virtuals = None
 
 
 class __Virtual(object):

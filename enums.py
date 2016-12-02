@@ -83,3 +83,4 @@ class Action(Enum):
     restart = 2
     reload = 3
     status = 4
+    force_start = 5

@@ -76,11 +76,13 @@ def parse_args():
 def parse_config(configfile):
     # TODO: parse configfile
 
+    statinfo = os.stat(configfile)
+
     #
     # START DEBUG
     #
     virtual1 = Virtual4(ip="192.168.178.2", port=80, service="http", request="check.php", receive="Running",
-                       protocol=Protocol.tcp)
+                        protocol=Protocol.tcp)
     real1 = Real4(ip="10.150.253.10", port=80, method=ForwardingMethod.gate)
     real2 = Real4(ip="10.150.253.11", port=80, method=ForwardingMethod.gate)
     real3 = Real4(ip="10.150.253.20", port=80, method=ForwardingMethod.gate)
@@ -107,7 +109,26 @@ def parse_config(configfile):
     #
 
     global_config.configfile = configfile
+    global_config.last_modified = statinfo.st_mtime
     return global_config, virtuals
+
+
+def check_config_updated(global_config):
+    statinfo = os.stat(global_config.configfile)
+
+    # has the config file been modified?
+    if statinfo.st_mtime > global_config.last_modified:
+        # parse the changed config file
+        global_config.new_global_config, global_config.new_virtuals = parse_config(global_config.configfile)
+
+        # do a force start just before we terminate
+        global_config.action_on_stop = Action.force_start
+
+        # stop reactor and therefore eventually kill the program
+        global_config.log.info("The config file '%s' has been updated, restarting..." % global_config.configfile)
+        reactor.stop()
+    else:
+        reactor.callLater(external.config_check_period, check_config_updated, global_config)
 
 
 def main():
@@ -128,27 +149,7 @@ def main():
     if global_config.supervised:
         start_reactor(virtuals, global_config)
     else:
-        pidfile = external.pid_path + "pydirectord." + os.path.basename(global_config.configfile) + ".pid"
-
-        pydirectord = PyDirectorDaemon(pidfile, virtuals, global_config)
-        if not global_config.initial_action:
-            print("No action specified, terminating...", file=sys.stderr)
-            sys.exit(1)
-        elif global_config.initial_action == Action.start:
-            global_config.log.info("Daemonizing with pid file " + pidfile)
-            pydirectord.start()
-        elif global_config.initial_action == Action.stop:
-            pydirectord.stop()
-        elif global_config.initial_action == Action.restart:
-            pydirectord.restart()
-        elif global_config.initial_action == Action.status:
-            pydirectord.status()
-        elif global_config.initial_action == Action.reload:
-            pydirectord.restart()  # FIXME: actually reload instead of restarting
-        else:
-            raise NotImplementedError("daemon action not yet implemented")
-
-        sys.exit(0)
+        daemon_handling(virtuals, global_config)
 
 
 def start_reactor(virtuals, global_config):
@@ -171,6 +172,47 @@ def start_reactor(virtuals, global_config):
 
     # run the reactor
     reactor.run()
+
+    # check if there is something left for us to do
+    if global_config.action_on_stop:
+        global_config.log.info("'action_on_stop' set to '%s', trying to perform" % global_config.action_on_stop.value)
+        daemon_handling(global_config.new_global_config, global_config.new_virtuals)
+    else:
+        sys.exit(0)
+
+
+def daemon_handling(virtuals, global_config):
+    """
+    Handle interactions with the daemon and exit afterwards.
+
+    :param virtuals: the list containing all virtual services.
+    :param global_config: the global configuration
+    :return: nothing
+    """
+
+    pidfile = external.pid_path + "pydirectord." + os.path.basename(global_config.configfile) + ".pid"
+
+    pydirectord = PyDirectorDaemon(pidfile, virtuals, global_config)
+    if not global_config.initial_action:
+        print("No action specified, terminating...", file=sys.stderr)
+        sys.exit(1)
+    elif global_config.initial_action == Action.start:
+        global_config.log.info("Daemonizing with pid file '%s'" % pidfile)
+        pydirectord.start()
+    elif global_config.initial_action == Action.stop:
+        pydirectord.stop()
+    elif global_config.initial_action == Action.restart:
+        pydirectord.restart()
+    elif global_config.initial_action == Action.status:
+        pydirectord.status()
+    elif global_config.initial_action == Action.reload:
+        pydirectord.restart()  # FIXME: actually reload instead of restarting
+    elif global_config.initial_action == Action.force_start:
+        pydirectord.force_start()
+    else:
+        raise NotImplementedError("daemon action not yet implemented")
+
+    sys.exit(0)
 
 
 class PyDirectorDaemon(Daemon):

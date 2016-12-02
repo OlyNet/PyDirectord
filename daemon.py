@@ -66,6 +66,17 @@ class Daemon:
     def delpid(self):
         os.remove(self.pidfile)
 
+    def force_start(self):
+        """Start the daemon even if it is already running. The pidfile will be overwritten. Only do this, if you intend
+        to terminate a potentially still running daemon by some other means."""
+
+        # delete pidfile if it exists
+        if os.path.exists(self.pidfile):
+            os.remove(self.pidfile)
+
+        # start daemon
+        self.start()
+
     def start(self):
         """Start the daemon."""
 
