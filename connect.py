@@ -4,7 +4,7 @@ from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ClientEndpoint, TCP6ClientEndpoint
 from twisted.internet.protocol import Protocol, Factory
 
-from config import Virtual4, Virtual6
+from structures import Virtual4, Virtual6
 
 
 class _DummyProtocol(Protocol):

@@ -11,7 +11,7 @@ from twisted.internet import reactor
 
 import check
 import external
-from config import Virtual4, Real4, Fallback4, GlobalConfig
+from structures import Virtual4, Real4, Fallback4, GlobalConfig
 from daemon import Daemon
 from enums import *
 
