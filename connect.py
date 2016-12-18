@@ -21,14 +21,12 @@ def __cb_connection_established(protocol):
 
 
 def check(virtual, real, global_config):
-    timeout = virtual.negotiatetimeout if virtual.negotiatetimeout else global_config.negotiatetimeout
-    host = real.ip.exploded
     port = virtual.checkport if virtual.checkport else real.port
 
     if isinstance(virtual, Virtual4):
-        point = TCP4ClientEndpoint(reactor, host, port, timeout=timeout)
+        point = TCP4ClientEndpoint(reactor, real.ip.exploded, port, timeout=virtual.checktimeout)
     elif isinstance(virtual, Virtual6):
-        point = TCP6ClientEndpoint(reactor, host, port, timeout=timeout)
+        point = TCP6ClientEndpoint(reactor, real.ip.exploded, port, timeout=virtual.checktimeout)
     else:
         global_config.log.critical("Not a valid Virtual4/Virtual6 service. This should not happen!")
         sys.exit(1)

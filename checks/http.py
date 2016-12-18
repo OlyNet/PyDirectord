@@ -26,8 +26,6 @@ def __cb_response(response, deferred):
 
 def check(virtual, real, global_config):
     # setup parameters
-    timeout = virtual.negotiatetimeout if virtual.negotiatetimeout else global_config.negotiatetimeout
-
     if virtual.httpmethod == HTTPMethod.GET:
         method = b'GET'
     elif virtual.httpmethod == HTTPMethod.HEAD:
@@ -35,8 +33,8 @@ def check(virtual, real, global_config):
     else:
         raise ValueError
 
-    host = (virtual.virtualhost if virtual.virtualhost else real.ip.exploded).encode()
-    port = (virtual.checkport if virtual.checkport else real.port).encode()
+    host = (virtual.hostname if virtual.hostname else real.ip.exploded).encode()
+    port = str((virtual.checkport if virtual.checkport else real.port)).encode()
     path = (real.request if real.request else virtual.request).encode()
 
     uri = b'http://' + host + b":" + port + b'/' + path
@@ -47,7 +45,7 @@ def check(virtual, real, global_config):
     deferred.addCallback(__cb_check_body, receive)
 
     # make request
-    agent = Agent(reactor, connectTimeout=timeout)
+    agent = Agent(reactor, connectTimeout=virtual.negotiatetimeout)
     d = agent.request(method, uri, None, None)
     d.addCallback(__cb_response, deferred=deferred)
     d.addErrback(__cb_error, deferred=deferred)

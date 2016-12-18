@@ -10,8 +10,8 @@ import sys
 from twisted.internet import reactor
 
 import check
+import config
 import external
-from structures import Virtual4, Real4, Fallback4, GlobalConfig
 from daemon import Daemon
 from enums import *
 
@@ -40,8 +40,10 @@ def parse_args():
                       help="use this configuration file [default: %default]", metavar="CONFIG")
     (options, args) = parser.parse_args()
 
+    config.parse_config(options.config_file)
+
     # parse the config file
-    global_config, virtuals = parse_config(options.config_file)
+    global_config, virtuals = config.parse_config(options.config_file)
 
     # make some changes depending on the command-line arguments
     if options.debug:
@@ -73,53 +75,13 @@ def parse_args():
     return global_config, virtuals
 
 
-def parse_config(configfile):
-    # TODO: parse configfile
-
-    statinfo = os.stat(configfile)
-
-    #
-    # START DEBUG
-    #
-    virtual1 = Virtual4(ip="192.168.178.2", port=80, service="http", request="check.php", receive="Running",
-                        protocol=Protocol.tcp)
-    real1 = Real4(ip="10.150.253.10", port=80, method=ForwardingMethod.gate)
-    real2 = Real4(ip="10.150.253.11", port=80, method=ForwardingMethod.gate)
-    real3 = Real4(ip="10.150.253.20", port=80, method=ForwardingMethod.gate)
-    fallback1 = Fallback4(ip="127.0.0.1", port=80, method=ForwardingMethod.gate)
-    virtual1.add_real(real1)
-    virtual1.add_real(real2)
-    virtual1.add_real(real3)
-    virtual1.set_fallback(fallback1)
-
-    virtual2 = Virtual4(ip="192.168.178.2", port=443, protocol=Protocol.tcp, checktype=Checktype.connect)
-    real4 = Real4(ip="10.150.253.10", port=443, method=ForwardingMethod.gate)
-    real5 = Real4(ip="10.150.253.11", port=443, method=ForwardingMethod.gate)
-    real6 = Real4(ip="10.150.253.20", port=443, method=ForwardingMethod.gate)
-    fallback2 = Fallback4(ip="127.0.0.1", port=443, method=ForwardingMethod.gate)
-    virtual2.add_real(real4)
-    virtual2.add_real(real5)
-    virtual2.add_real(real6)
-    virtual2.set_fallback(fallback2)
-
-    global_config = GlobalConfig(checkinterval=2, negotiatetimeout=5)
-    virtuals = [virtual1, virtual2]
-    #
-    # STOP DEBUG
-    #
-
-    global_config.configfile = configfile
-    global_config.last_modified = statinfo.st_mtime
-    return global_config, virtuals
-
-
 def check_config_updated(global_config):
     statinfo = os.stat(global_config.configfile)
 
     # has the config file been modified?
     if statinfo.st_mtime > global_config.last_modified:
         # parse the changed config file
-        global_config.new_global_config, global_config.new_virtuals = parse_config(global_config.configfile)
+        global_config.new_global_config, global_config.new_virtuals = config.parse_config(global_config.configfile)
 
         # do a force start just before we terminate
         global_config.action_on_stop = Action.force_start
@@ -161,6 +123,7 @@ def start_reactor(virtuals, global_config):
     :param global_config: the global configuration
     :return: nothing
     """
+
     # prepare the check-modules
     check.prepare_check_modules(global_config)
 
@@ -226,4 +189,9 @@ class PyDirectorDaemon(Daemon):
 
 
 if __name__ == '__main__':
+    # check if we are running as root
+    if os.geteuid() != 0:
+        print("Must be run as root!", file=sys.stderr)
+        sys.exit(1)
+
     main()

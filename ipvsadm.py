@@ -11,7 +11,6 @@ from enums import *
 def initial_ipvs_setup(virtuals, global_config):
     global_config.log.info("Beginning initial ipvs table setup")
     for virtual in virtuals:
-        quiescent = virtual.quiescent if virtual.quiescent is not None else global_config.quiescent
         virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
 
         # delete the virtual service in case it might be present
@@ -31,7 +30,7 @@ def initial_ipvs_setup(virtuals, global_config):
             sys.exit(1)
 
         # loop all real servers and set them up if we quiescent
-        if quiescent:
+        if virtual.quiescent:
             for real in virtual.real:
                 real_hostname = real.ip.exploded + ":" + str(real.port)
                 global_config.log.info("Adding real server " + real_hostname)

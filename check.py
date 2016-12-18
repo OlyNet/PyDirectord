@@ -65,9 +65,6 @@ def __cb_error(failure, virtual, real, global_config):
     :return: nothing
     """
     # determine specific configuration for this service
-    failurecount = virtual.failurecount if virtual.failurecount else global_config.failurecount
-    quiescent = virtual.quiescent if virtual.quiescent is not None else global_config.quiescent
-    readdquiescent = virtual.readdquiescent if virtual.readdquiescent is not None else global_config.readdquiescent
     virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
     real_hostname = real.ip.exploded + ":" + str(real.port)
 
@@ -76,11 +73,11 @@ def __cb_error(failure, virtual, real, global_config):
     real.failcount += 1
 
     # check if we have reached the maximal permitted failure count
-    if real.failcount >= failurecount:
-        real.failcount = failurecount  # prevent infinite growth of this value
+    if real.failcount >= virtual.failurecount:
+        real.failcount = virtual.failurecount  # prevent infinite growth of this value
 
         # just set weight to zero or delete real server altogether depending on quiescent
-        if quiescent:
+        if virtual.quiescent:
             if real.is_present:
                 if real.current_weight == 0:
                     pass  # nothing to do
@@ -89,7 +86,7 @@ def __cb_error(failure, virtual, real, global_config):
                     global_config.log.info("Setting real " + real_hostname + " to " + str(real.current_weight))
                     ipvsadm.edit_real_server(virtual, real, global_config)
             else:
-                if readdquiescent:
+                if virtual.readdquiescent:
                     real.current_weight = 0
                     global_config.log.info("Adding real " + real_hostname + " with " + str(real.current_weight)
                                            + " due to readdquiescent")
@@ -186,15 +183,14 @@ def initialize(virtuals, global_config):
 def cleanup(virtuals, global_config):
     global_config.log.info("Received SIGTERM, starting cleanup...")
 
-    if global_config.cleanstop:
-        for virtual in virtuals:
-            if virtual.is_present:
-                virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
-                global_config.log.info("Removing virtual service " + virtual_hostname)
-                try:
-                    ipvsadm.delete_virtual_service(virtual, global_config, sync=True)
-                except CalledProcessError:
-                    global_config.log.error("Could not remove virtual service " + virtual_hostname)
+    for virtual in virtuals:
+        if virtual.is_present and virtual.cleanstop:
+            virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
+            global_config.log.info("Removing virtual service " + virtual_hostname)
+            try:
+                ipvsadm.delete_virtual_service(virtual, global_config, sync=True)
+            except CalledProcessError:
+                global_config.log.error("Could not remove virtual service " + virtual_hostname)
 
 
 def do_check(virtual, real, global_config):

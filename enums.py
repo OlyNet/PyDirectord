@@ -58,12 +58,11 @@ class Service(Enum):
 class Checktype(Enum):
     connect = 0
     external = 1
-    external_perl = 2  # deprecated
-    negotiate = 3
-    off = 4
-    on = 5
-    ping = 6
-    negotiate_connect = 7
+    negotiate = 2
+    off = 3
+    on = 4
+    ping = 5
+    negotiate_connect = 6
 
 
 class HTTPMethod(Enum):
