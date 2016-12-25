@@ -6,6 +6,7 @@ import logging
 import optparse
 import os
 import sys
+from pathlib import Path
 
 from twisted.internet import reactor
 
@@ -93,6 +94,19 @@ def check_config_updated(global_config):
         reactor.callLater(external.config_check_period, check_config_updated, global_config)
 
 
+def sanity_check(global_config):
+    """
+    Performs some sanity checks on the environment PyDirectord is run in.
+
+    :param global_config: the global configuration
+    :return:
+    """
+    ipvsadm = Path(external.ipvsadm_path)
+    if not ipvsadm.is_file():
+        global_config.log.critical("The 'ipvsadm' tool could not be found at %s" % external.ipvsadm_path)
+        sys.exit(1)
+
+
 def main():
     # parse the command-line arguments
     global_config, virtuals = parse_args()
@@ -123,6 +137,8 @@ def start_reactor(virtuals, global_config):
     :param global_config: the global configuration
     :return: nothing
     """
+    # perform a sanity check of the environment
+    sanity_check(global_config)
 
     # prepare the check-modules
     check.prepare_check_modules(global_config)
