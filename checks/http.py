@@ -1,6 +1,7 @@
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 from twisted.web.client import Agent, readBody
+from twisted.web.http_headers import Headers
 
 from UnexpectedResult import UnexpectedResult
 from enums import *
@@ -8,7 +9,7 @@ from enums import *
 
 def __cb_check_body(body, receive):
     if body != receive:
-        raise UnexpectedResult("got '" + body + "' expected '" + receive + "'")
+        raise UnexpectedResult("got '" + str(body) + "' expected '" + str(receive) + "'")
 
 
 def __cb_received_body(body, deferred):
@@ -39,6 +40,11 @@ def check(virtual, real, global_config):
 
     uri = b'http://' + host + b":" + port + b'/' + path
 
+    # prepare headers
+    headers = {'User-Agent': ['Pydirectord 0.9']}
+    if virtual.hostname is not None:
+        headers['Host'] = virtual.hostname
+
     # prepare deferred
     receive = (real.receive if real.receive else virtual.receive).encode()
     deferred = Deferred()
@@ -46,7 +52,7 @@ def check(virtual, real, global_config):
 
     # make request
     agent = Agent(reactor, connectTimeout=virtual.negotiatetimeout)
-    d = agent.request(method, uri, None, None)
+    d = agent.request(method, uri, Headers(headers), None)
     d.addCallback(__cb_response, deferred=deferred)
     d.addErrback(__cb_error, deferred=deferred)
 
