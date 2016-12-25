@@ -34,16 +34,14 @@ def check(virtual, real, global_config):
     else:
         raise ValueError
 
-    host = (virtual.hostname if virtual.hostname else real.ip.exploded).encode()
-    port = str((virtual.checkport if virtual.checkport else real.port)).encode()
-    path = (real.request if real.request else virtual.request).encode()
+    hostname = virtual.hostname if virtual.hostname else real.ip.exploded
+    port = str(virtual.checkport if virtual.checkport else real.port)
+    path = real.request if real.request else virtual.request
 
-    uri = b'http://' + host + b":" + port + b'/' + path
+    uri = b'http://' + real.ip.exploded.encode() + b":" + port.encode() + b'/' + path.encode()
 
     # prepare headers
-    headers = {'User-Agent': ['Pydirectord 0.9']}
-    if virtual.hostname is not None:
-        headers['Host'] = virtual.hostname
+    headers = {'User-Agent': ['Pydirectord 0.9'], 'Host': [hostname]}
 
     # prepare deferred
     receive = (real.receive if real.receive else virtual.receive).encode()
