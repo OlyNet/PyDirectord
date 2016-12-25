@@ -157,17 +157,23 @@ def prepare_check_modules(global_config):
 
     :return: nothing
     """
-    global_config.log.info("Beginning with check-module loading...")
+    global_config.log.debug("Beginning with check-module loading...")
     for fn in os.listdir(external.check_path):
         if os.path.isfile(external.check_path + fn) and fn != "__init__.py" and fn.endswith(".py"):
             module_name = fn[:-3]
-            global_config.checks[module_name] = import_module('checks.' + module_name)
-            if hasattr(global_config.checks[module_name], 'check'):
-                global_config.log.info("Check-module '" + module_name + "' has been successfully loaded")
-            else:
-                global_config.log.error("The module '" + module_name + "' does not seem to be a valid check-module")
-                global_config.checks[module_name] = None
-    global_config.log.info("Check-module loading done")
+            try:
+                global_config.checks[module_name] = import_module('checks.' + module_name)
+                if hasattr(global_config.checks[module_name], 'check'):
+                    global_config.log.info("Check-module '" + module_name + "' has been successfully loaded")
+                else:
+                    global_config.log.error("The module '" + module_name
+                                            + "' does not seem to be a valid check-module and is therefore ignored")
+                    global_config.checks[module_name] = None
+            except SyntaxError:
+                global_config.log.error("The module '" + module_name
+                                        + "' caused a SyntaxError when loaded and is therefore ignored")
+
+    global_config.log.debug("Check-module loading done")
 
 
 def initialize(virtuals, global_config):
@@ -195,11 +201,11 @@ def cleanup(virtuals, global_config):
 
 def do_check(virtual, real, global_config):
     if virtual.checktype == Checktype.negotiate:
-        if not global_config.checks[virtual.service]:
-            global_config.log.error("No check-module found for " + virtual.service)
-            return
-        else:
+        try:
             module = global_config.checks[virtual.service]
+        except KeyError:
+            global_config.log.error("No check-module found for '%s', no further checks are scheduled" % virtual.service)
+            return
     elif virtual.checktype == Checktype.connect:
         module = connect
     else:
