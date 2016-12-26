@@ -106,9 +106,9 @@ def __cb_error(failure, virtual, real, global_config):
             if real.is_present and real.current_weight > 0:
                 return
 
-        # use fallback otherwise
+        # use fallback otherwise if it is present
         fallback = virtual.fallback
-        if not fallback.is_present or fallback.current_weight < 1:
+        if fallback and (not fallback.is_present or fallback.current_weight < 1):
             fallback.current_weight = 1
             if not fallback.is_present:
                 global_config.log.info("Adding fallback for " + virtual_hostname)
