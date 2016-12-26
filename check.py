@@ -130,11 +130,8 @@ def __cb_repeat(_, virtual, real, global_config):
     :param global_config: the global configuration object.
     :return: nothing
     """
-    # determine specific configuration for this service
-    checkinterval = virtual.checkinterval if virtual.checkinterval else global_config.checkinterval
-
     # schedule check in the future
-    reactor.callLater(checkinterval, do_check, virtual, real, global_config)
+    reactor.callLater(virtual.checkinterval, do_check, virtual, real, global_config)
 
 
 def __cb_unexpected_failure(failure, virtual, real, global_config):
@@ -166,12 +163,13 @@ def prepare_check_modules(global_config):
                 if hasattr(global_config.checks[module_name], 'check'):
                     global_config.log.info("Check-module '" + module_name + "' has been successfully loaded")
                 else:
-                    global_config.log.error("The module '" + module_name
+                    global_config.log.error("Check-module '" + module_name
                                             + "' does not seem to be a valid check-module and is therefore ignored")
                     global_config.checks[module_name] = None
-            except SyntaxError:
-                global_config.log.error("The module '" + module_name
+            except SyntaxError as e:
+                global_config.log.error("Check-module '" + module_name
                                         + "' caused a SyntaxError when loaded and is therefore ignored")
+                global_config.log.debug("SyntaxError: %s" % str(e))
 
     global_config.log.debug("Check-module loading done")
 

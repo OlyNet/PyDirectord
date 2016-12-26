@@ -50,28 +50,28 @@ def parse_args():
     if options.debug:
         global_config.supervised = True
         global_config.log_level = logging.DEBUG
-
-    # determine initial action
-    action = args[0] if len(args) >= 1 else None
-    if action is None:
-        if global_config.supervised:
-            pass  # nothing to do, this is fine
-        else:
-            print("No action specified, terminating...", file=sys.stderr)
-            sys.exit(1)
-    elif action == "start":
-        global_config.initial_action = Action.start
-    elif action == "stop":
-        global_config.initial_action = Action.stop
-    elif action == "restart":
-        global_config.initial_action = Action.restart
-    elif action == "reload":
-        global_config.initial_action = Action.reload
-    elif action == "status":
-        global_config.initial_action = Action.status
     else:
-        print("Unknown action '%s', terminating..." % action, file=sys.stderr)
-        sys.exit(1)
+        # determine initial action
+        action = args[0] if len(args) >= 1 else None
+        if action is None:
+            if global_config.supervised:
+                pass  # nothing to do, this is fine
+            else:
+                print("No action specified, terminating...", file=sys.stderr)
+                sys.exit(1)
+        elif action == "start":
+            global_config.initial_action = Action.start
+        elif action == "stop":
+            global_config.initial_action = Action.stop
+        elif action == "restart":
+            global_config.initial_action = Action.restart
+        elif action == "reload":
+            global_config.initial_action = Action.reload
+        elif action == "status":
+            global_config.initial_action = Action.status
+        else:
+            print("Unknown action '%s', terminating..." % action, file=sys.stderr)
+            sys.exit(1)
 
     return global_config, virtuals
 

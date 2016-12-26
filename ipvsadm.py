@@ -9,7 +9,7 @@ from enums import *
 
 
 def initial_ipvs_setup(virtuals, global_config):
-    global_config.log.info("Beginning initial ipvs table setup")
+    global_config.log.debug("Beginning initial ipvs table setup")
     for virtual in virtuals:
         virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
 
@@ -50,7 +50,7 @@ def initial_ipvs_setup(virtuals, global_config):
                 global_config.log.critical(
                     "Adding the fallback server for " + virtual_hostname + " failed during initialization")
                 sys.exit(1)
-    global_config.log.info("Initial ipvs table setup done")
+    global_config.log.debug("Initial ipvs table setup done")
 
 
 def add_virtual_service(virtual, global_config, sync=False):
@@ -296,4 +296,4 @@ class __IPVSProcessProtocol(ProcessProtocol):
 
     def outReceived(self, data):
         if data is not None:
-            self.global_config.log.debug("From 'ipvsadm': " + str(data))
+            self.global_config.log.warning("From 'ipvsadm': " + str(data))
