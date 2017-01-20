@@ -39,6 +39,7 @@ class GlobalConfig(object):
         self.checks = dict()
         self.initial_action = None
         self.last_modified = 0
+        self.terminated = False
 
         # restart capabilities
         self.action_on_stop = None

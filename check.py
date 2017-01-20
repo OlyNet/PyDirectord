@@ -8,6 +8,7 @@ import connect
 import external
 import ipvsadm
 from enums import Checktype
+from exceptions import *
 
 
 def __cb_running(_, virtual, real, global_config):
@@ -21,6 +22,10 @@ def __cb_running(_, virtual, real, global_config):
     :param global_config: the global configuration object.
     :return: nothing
     """
+    # check if we are in the process of being terminated
+    if global_config.terminated:
+        return
+
     # determine specific configuration for this service
     virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
     real_hostname = real.ip.exploded + ":" + str(real.port)
@@ -64,6 +69,10 @@ def __cb_error(failure, virtual, real, global_config):
     :param global_config: the global configuration object.
     :return: nothing
     """
+    # check if we are in the process of being terminated
+    if global_config.terminated:
+        return
+
     # determine specific configuration for this service
     virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
     real_hostname = real.ip.exploded + ":" + str(real.port)
@@ -134,7 +143,7 @@ def __cb_repeat(_, virtual, real, global_config):
     reactor.callLater(virtual.checkinterval, do_check, virtual, real, global_config)
 
 
-def __cb_unexpected_failure(failure, virtual, real, global_config):
+def __cb_unexpected_failure(reason, virtual, real, global_config):
     """
     Deal with unexpected failures.
     :param reason:
@@ -143,8 +152,8 @@ def __cb_unexpected_failure(failure, virtual, real, global_config):
     :param global_config:
     :return:
     """
-    global_config.critical("Something went terribly wrong: " % str(failure.value))
-    failure.printDetailedTraceback()
+    global_config.critical("Something went terribly wrong: " % str(reason.value))
+    reason.printDetailedTraceback()
     reactor.stop()
 
 
@@ -186,6 +195,7 @@ def initialize(virtuals, global_config):
 
 def cleanup(virtuals, global_config):
     global_config.log.info("Received SIGTERM, starting cleanup...")
+    global_config.terminated = True
 
     for virtual in virtuals:
         if virtual.is_present and virtual.cleanstop:
@@ -198,6 +208,11 @@ def cleanup(virtuals, global_config):
 
 
 def do_check(virtual, real, global_config):
+    # check if we are in the process of being terminated
+    if global_config.terminated:
+        global_config.log.debug("Scheduled check cancelled because PyDirectord is being terminated")
+        return
+
     if virtual.checktype == Checktype.negotiate:
         try:
             module = global_config.checks[virtual.service]
@@ -209,8 +224,11 @@ def do_check(virtual, real, global_config):
     else:
         raise NotImplementedError(virtual.checktype)
 
-    d = module.check(virtual, real, global_config)
-    d.addCallback(__cb_running, virtual, real, global_config)
-    d.addErrback(__cb_error, virtual, real, global_config)
-    d.addCallback(__cb_repeat, virtual, real, global_config)
-    d.addErrback(__cb_unexpected_failure, virtual, real, global_config)
+    try:
+        d = module.check(virtual, real, global_config)
+        d.addCallback(__cb_running, virtual, real, global_config)
+        d.addErrback(__cb_error, virtual, real, global_config)
+        d.addCallback(__cb_repeat, virtual, real, global_config)
+        d.addErrback(__cb_unexpected_failure, virtual, real, global_config)
+    except IllegalConfigurationException as e:
+        global_config.log.error("Illegal configuration: %s" % str(e))

@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from twisted.internet import reactor
+from twisted.logger import globalLogBeginner
 
 import check
 import config
@@ -111,8 +112,12 @@ def main():
     # parse the command-line arguments
     global_config, virtuals = parse_args()
 
-    # setup Logger
-    global_config.log = logging.getLogger("PyDirectord")
+    # redirect the Twisted log to nowhere to prevent a memory 'leak'
+    # see: https://twistedmatrix.com/trac/ticket/8164
+    globalLogBeginner.beginLoggingTo([lambda _: None], redirectStandardIO=False, discardBuffer=True)
+
+    # setup the actual Logger
+    global_config.log = logging.getLogger(__name__)
     global_config.log.setLevel(global_config.log_level)
     if global_config.supervised:
         handler = logging.StreamHandler()

@@ -1,2 +1,0 @@
-class UnexpectedResult(Exception):
-    pass

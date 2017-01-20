@@ -1,7 +1,7 @@
 from twisted.enterprise import adbapi
 from twisted.python.failure import Failure
 
-from UnexpectedResult import UnexpectedResult
+from exceptions import *
 
 
 def __cb_close_pool(ret, pool, global_config):
@@ -18,7 +18,7 @@ def __cb_close_pool(ret, pool, global_config):
 
 def __cb_check_value(value):
     if value is None or len(value) == 0:
-        raise UnexpectedResult("got nothing, expected something")
+        raise UnexpectedResultException("got nothing, expected something")
 
 
 def __cb_error(reason):
@@ -26,10 +26,30 @@ def __cb_error(reason):
 
 
 def check(virtual, real, global_config):
-    pool = adbapi.ConnectionPool("MySQLdb", host=real.ip.exploded, port=real.port, user=virtual.login,
-                                 passwd=virtual.passwd, db=virtual.database)
+    # prepare the parameters for the connection pool and perform some sanity checks
+    db_args = dict()
+    db_args['connect_timeout'] = virtual.negotiatetimeout
+    db_args['host'] = real.ip.exploded
+    db_args['port'] = real.port
+    db_args['passwd'] = virtual.passwd if virtual.passwd else ""
+    if virtual.login is None:
+        raise IllegalConfigurationException("no username ('login') specified for MySQL check")
+    else:
+        db_args['user'] = virtual.login
+    if virtual.database is None:
+        raise IllegalConfigurationException("no database specified for MySQL check")
+    else:
+        db_args['database'] = virtual.database
+    if virtual.request is None:
+        raise IllegalConfigurationException("no query ('request') specified for MySQL check")
+
+    # initiate the connection pool and query the database
+    pool = adbapi.ConnectionPool("MySQLdb", cp_min=1, cp_max=1, **db_args)
     d = pool.runQuery(virtual.request, ())
+
+    # add internal checks to deferred
     d.addBoth(__cb_close_pool, pool, global_config)
     d.addErrback(__cb_error)
     d.addCallback(__cb_check_value)
+
     return d

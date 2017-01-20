@@ -4,7 +4,7 @@ from twisted.internet.defer import Deferred
 from twisted.web.client import Agent, readBody, BrowserLikePolicyForHTTPS, _requireSSL
 from twisted.web.http_headers import Headers
 
-from UnexpectedResult import UnexpectedResult
+from exceptions import UnexpectedResultException
 from enums import *
 
 
@@ -24,7 +24,7 @@ class CheckContextFactory(BrowserLikePolicyForHTTPS):
 
 def __cb_check_body(body, receive):
     if body != receive:
-        raise UnexpectedResult("got '" + str(body) + "' expected '" + str(receive) + "'")
+        raise UnexpectedResultException("got '" + str(body) + "' expected '" + str(receive) + "'")
 
 
 def __cb_received_body(body, deferred):
