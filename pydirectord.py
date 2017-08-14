@@ -59,7 +59,7 @@ def parse_args():
                 pass  # nothing to do, this is fine
             else:
                 print("No action specified, terminating...", file=sys.stderr)
-                sys.exit(1)
+                sys.exit(4)
         elif action == "start":
             global_config.initial_action = Action.start
         elif action == "stop":
@@ -72,7 +72,7 @@ def parse_args():
             global_config.initial_action = Action.status
         else:
             print("Unknown action '%s', terminating..." % action, file=sys.stderr)
-            sys.exit(1)
+            sys.exit(4)
 
     return global_config, virtuals
 
@@ -179,7 +179,7 @@ def daemon_handling(virtuals, global_config):
     pydirectord = PyDirectorDaemon(pidfile, virtuals, global_config)
     if not global_config.initial_action:
         print("No action specified, terminating...", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(4)
     elif global_config.initial_action == Action.start:
         global_config.log.info("Daemonizing with pid file '%s'" % pidfile)
         pydirectord.start()
@@ -194,7 +194,8 @@ def daemon_handling(virtuals, global_config):
     elif global_config.initial_action == Action.force_start:
         pydirectord.force_start()
     else:
-        raise NotImplementedError("daemon action not yet implemented")
+        print("Unknown action '%s', terminating..." % global_config.initial_action, file=sys.stderr)
+        sys.exit(4)
 
     sys.exit(0)
 

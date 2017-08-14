@@ -30,6 +30,7 @@ class ServerStatus(Enum):
     reloading = 3
     stopped = 4
     unknown = 5
+    stale = 6
     all = 255
 
 

@@ -140,17 +140,25 @@ class Daemon:
             procfile = open("/proc/%d/status" % pid, 'r')
             procfile.close()
         except IOError:
-            return ServerStatus.stopped
+            return ServerStatus.stale
         except TypeError:
-            return ServerStatus.stopped
+            return ServerStatus.unknown
 
         return ServerStatus.running
 
     def status(self):
         if self.__get_status() == ServerStatus.stopped:
-            print("PyDirectord is stopped.")
+            print("PyDirectord is stopped")
+            sys.exit(3)
         elif self.__get_status() == ServerStatus.running:
-            print("PyDirectord is running.")
+            print("PyDirectord is running")
+            sys.exit(0)
+        elif self.__get_status() == ServerStatus.stale:
+            print("PyDirectord: PID file '" + self.pidfile + "' is stale")
+            sys.exit(1)
+        elif self.__get_status() == ServerStatus.unknown:
+            print("PyDirectord status unknown")
+            sys.exit(4)
 
     def restart(self):
         """Restart the daemon."""
