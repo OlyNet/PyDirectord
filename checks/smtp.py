@@ -38,7 +38,6 @@ class SMTPConnectClient(basic.LineReceiver, TimeoutMixin):
         We are no longer connected
         """
         self.setTimeout(None)
-        self.mailFile = None
 
     def timeoutConnection(self):
         if self.log:
@@ -49,6 +48,7 @@ class SMTPConnectClient(basic.LineReceiver, TimeoutMixin):
     def lineReceived(self, line):
         if self.log:
             self.log.debug("Line received: " + str(line))
+
         self.resetTimeout()
 
         why = None
@@ -131,19 +131,6 @@ class SMTPConnectClient(basic.LineReceiver, TimeoutMixin):
 
 
 class SMTPConnectFactory(ClientFactory):
-    """
-    Utility factory for sending emails easily.
-
-    @type currentProtocol: L{SMTPSender}
-    @ivar currentProtocol: The current running protocol returned by
-        L{buildProtocol}.
-
-    @type sendFinished: C{bool}
-    @ivar sendFinished: When the value is set to True, it means the message has
-        been sent or there has been an unrecoverable error or the sending has
-        been cancelled. The default value is False.
-    """
-
     domain = DNSNAME
     protocol = SMTPConnectClient
 
@@ -153,19 +140,15 @@ class SMTPConnectFactory(ClientFactory):
         of this message completes.
         @type deferred: L{defer.Deferred}
 
-        @param retries: The number of times to retry delivery of this
-        message.
-
         @param timeout: Period, in seconds, for which to wait for
         server responses, or None to wait forever.
         """
 
         self.result = deferred
-        # self.result.addBoth(self._removeDeferred)
+        self.result.addBoth(self._removeDeferred)
         self.sendFinished = False
         self.currentProtocol = None
         self.log = log
-
         self.timeout = timeout
 
     def _removeDeferred(self, result):
@@ -179,9 +162,10 @@ class SMTPConnectFactory(ClientFactory):
         self._processConnectionError(connector, err)
 
     def _processConnectionError(self, connector, err):
-        self.currentProtocol = None
         if err.check(ConnectionDone):
             err.value = SMTPConnectError(-1, "Unable to connect to server.")
+
+        self.currentProtocol = None
         self.result.errback(err.value)
 
     def buildProtocol(self, addr):
