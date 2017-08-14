@@ -8,7 +8,7 @@ import connect
 import external
 import ipvsadm
 from enums import Checktype
-from exceptions import *
+from pydexceptions import *
 
 
 def __cb_running(_, virtual, real, global_config):

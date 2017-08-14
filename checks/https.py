@@ -4,7 +4,7 @@ from twisted.internet.defer import Deferred
 from twisted.web.client import Agent, readBody, BrowserLikePolicyForHTTPS, _requireSSL
 from twisted.web.http_headers import Headers
 
-from exceptions import UnexpectedResultException
+from pydexceptions import UnexpectedResultException
 from enums import *
 
 

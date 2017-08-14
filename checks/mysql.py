@@ -1,7 +1,7 @@
 from twisted.enterprise import adbapi
 from twisted.python.failure import Failure
 
-from exceptions import *
+from pydexceptions import *
 
 
 def __cb_close_pool(ret, pool, global_config):
