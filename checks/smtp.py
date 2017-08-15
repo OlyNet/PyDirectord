@@ -193,5 +193,5 @@ class _SMTPConnectFactory(ClientFactory):
 def check(virtual, real, global_config):
     deferred = Deferred()
     senderFactory = _SMTPConnectFactory(deferred, timeout=virtual.negotiatetimeout)
-    reactor.connectTCP(real.ip.exploded.encode(), real.port, senderFactory)
+    reactor.connectTCP(real.ip.exploded.encode(), real.port, senderFactory, timeout=virtual.negotiatetimeout)
     return deferred
