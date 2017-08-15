@@ -63,7 +63,7 @@ def __cb_error(failure, virtual, real, global_config):
     Function called when the outcome of a check-module was negative. Used to update the ipvs table of the kernel if
     necessary.
 
-    :param _: the reason this function is called.
+    :param failure: the reason this function is called.
     :param virtual: the virtual service this check was concerned with.
     :param real: the specific real server this check was concerned with.
     :param global_config: the global configuration object.

@@ -8,7 +8,7 @@ from twisted.protocols import basic
 from twisted.protocols.policies import TimeoutMixin
 
 
-class SMTPConnectClient(basic.LineReceiver, TimeoutMixin):
+class _SMTPConnectProtocol(basic.LineReceiver, TimeoutMixin):
     timeout = None
 
     def __init__(self, identity, log=None):
@@ -130,9 +130,9 @@ class SMTPConnectClient(basic.LineReceiver, TimeoutMixin):
         self.sendLine(b'QUIT')
 
 
-class SMTPConnectFactory(ClientFactory):
+class _SMTPConnectFactory(ClientFactory):
     domain = DNSNAME
-    protocol = SMTPConnectClient
+    protocol = _SMTPConnectProtocol
 
     def __init__(self, deferred, timeout=None, log=None):
         """
@@ -192,6 +192,6 @@ class SMTPConnectFactory(ClientFactory):
 
 def check(virtual, real, global_config):
     deferred = Deferred()
-    senderFactory = SMTPConnectFactory(deferred, timeout=virtual.negotiatetimeout)
+    senderFactory = _SMTPConnectFactory(deferred, timeout=virtual.negotiatetimeout)
     reactor.connectTCP(real.ip.exploded.encode(), real.port, senderFactory)
     return deferred
