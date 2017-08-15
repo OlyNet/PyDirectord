@@ -30,7 +30,7 @@ def check(virtual, real, global_config):
     db_args = dict()
     db_args['connect_timeout'] = virtual.negotiatetimeout
     db_args['host'] = real.ip.exploded
-    db_args['port'] = real.port
+    db_args['port'] = virtual.checkport if virtual.checkport else real.port
     db_args['passwd'] = virtual.passwd if virtual.passwd else ""
     if virtual.login is None:
         raise IllegalConfigurationException("no username ('login') specified for MySQL check")
