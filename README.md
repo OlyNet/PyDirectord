@@ -10,6 +10,7 @@ PyDirectord has the following dependencies:
 * mysqlclient
 * PyGreSQL
 * (ldaptor)
+
 The latter is used in `checks/ldap.py` which is not yet working because it is not yet available for Python 3.
 
 ## License
