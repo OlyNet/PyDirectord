@@ -18,7 +18,7 @@ def initial_ipvs_setup(virtuals, global_config):
             delete_virtual_service(virtual, global_config, True)
         except subprocess.CalledProcessError:
             global_config.log.debug(
-                "Deleting the virtual service for " + virtual_hostname + " failed during initialization")
+                "Deleting the virtual service for " + virtual_hostname + " failed during initialization (probably ok)")
 
         # add the virtual service
         global_config.log.info("Adding virtual service for " + virtual_hostname)
