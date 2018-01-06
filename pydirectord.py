@@ -21,9 +21,9 @@ __author__ = "Martin Herrmann"
 __copyright__ = "Copyright 2016, Martin Herrmann"
 __credits__ = ["Martin Herrmann"]
 __license__ = "GPLv3"
-__version__ = "0.9"
+__version__ = "0.10"
 __maintainer__ = "Martin Herrmann"
-__email__ = "martin.herrmann@tum.de"
+__email__ = "martin.herrmann@stormi.io"
 __status__ = "Alpha"
 
 
