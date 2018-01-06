@@ -77,7 +77,10 @@ def __cb_error(failure, virtual, real, global_config):
     virtual_hostname = virtual.ip.exploded + ":" + str(virtual.port)
     real_hostname = real.ip.exploded + ":" + str(real.port)
 
-    global_config.log.debug(real_hostname + "\tNOK: %s" % failure.value)
+    try:
+        global_config.log.debug(real_hostname + "\tNOK: %s" % failure.value)
+    except:  # FIXME: [PYD-34] because the SMTP check sometimes causes the failure variable to become fucked up
+        global_config.log.debug(real_hostname + "\tNOK: %s" % "no failure reason available")
 
     real.failcount += 1
 
@@ -216,7 +219,7 @@ def do_check(virtual, real, global_config):
     if virtual.checktype == Checktype.negotiate:
         try:
             module = global_config.checks[virtual.service]
-        except KeyError:
+        except KeyError:  # check if we have a check-module for the requested 'negotiate' check
             global_config.log.error("No check-module found for '%s', no further checks are scheduled" % virtual.service)
             return
     elif virtual.checktype == Checktype.connect:

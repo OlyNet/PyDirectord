@@ -194,6 +194,8 @@ def check(virtual, real, global_config):
     port = virtual.checkport if virtual.checkport else real.port
 
     deferred = Deferred()
-    senderFactory = _SMTPConnectFactory(deferred, timeout=virtual.negotiatetimeout)
-    reactor.connectTCP(real.ip.exploded.encode(), port, senderFactory, timeout=virtual.negotiatetimeout)
+
+    factory = _SMTPConnectFactory(deferred, timeout=virtual.negotiatetimeout)
+    reactor.connectTCP(real.ip.exploded.encode(), port, factory, timeout=virtual.negotiatetimeout)
+
     return deferred

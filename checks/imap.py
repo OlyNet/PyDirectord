@@ -8,15 +8,14 @@ class _IMAP4CheckClient(imap4.IMAP4Client):
     """
     A client with callbacks for greeting messages from an IMAP server.
     """
-    deferred = None
 
     def serverGreeting(self, caps):
         self.factory.greetingReceived()
         self.logout()
         if caps is not None:
-            self.deferred.callback(self)
+            self.imapDeferred.callback(self)
         else:
-            self.deferred.errback("capabilities is empty")
+            self.imapDeferred.errback("capabilities is empty")
 
 
 class _IMAP4CheckFactory(protocol.ClientFactory):
@@ -24,8 +23,8 @@ class _IMAP4CheckFactory(protocol.ClientFactory):
 
     protocol = _IMAP4CheckClient
 
-    def __init__(self, deferred, timeout):
-        self.deferred = deferred
+    def __init__(self, imapDeferred, timeout):
+        self.imapDeferred = imapDeferred
         self.timeout = timeout
         self.greeting_received = False
 
@@ -33,12 +32,12 @@ class _IMAP4CheckFactory(protocol.ClientFactory):
         assert not self.usedUp
         self.usedUp = True
 
-        self.p = self.protocol()
-        self.p.factory = self
-        self.p.deferred = self.deferred
-        self.p.setTimeout(self.timeout)
+        p = self.protocol()
+        p.factory = self
+        p.imapDeferred = self.imapDeferred
+        p.setTimeout(self.timeout)
 
-        return self.p
+        return p
 
     def greetingReceived(self):
         """
@@ -48,11 +47,11 @@ class _IMAP4CheckFactory(protocol.ClientFactory):
         self.greeting_received = True
 
     def clientConnectionFailed(self, connector, reason):
-        self.deferred.errback(reason)
+        self.imapDeferred.errback(reason)
 
     def clientConnectionLost(self, connector, reason):
         if not self.greeting_received:
-            self.deferred.errback(reason)
+            self.imapDeferred.errback(reason)
 
 
 def check(virtual, real, global_config):
