@@ -238,6 +238,8 @@ def parse_config(file):
                     virtual_args["database"] = cur_section[key]
                 elif key == "secret":
                     virtual_args["secret"] = cur_section[key]
+                elif key == "fingerprint":
+                    virtual_args["fingerprint"] = cur_section[key]
                 elif key == "request":
                     virtual_args["request"] = cur_section[key]
                 elif key == "receive":

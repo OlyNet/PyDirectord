@@ -60,7 +60,7 @@ class __Virtual(object):
                  emailalertfreq=0, emailalertstatus=ServerStatus.all, fallbackcommand=None,
                  quiescent=True, readdquiescent=True, service=None, checkcommand=None, checkport=None, request=None,
                  receive=None, httpmethod=HTTPMethod.GET, hostname=None, login=None, passwd=None, database=None,
-                 secret=None, scheduler=Scheduler.wrr, persistent=None, protocol=None, **kwargs):
+                 secret=None, fingerprint=None, scheduler=Scheduler.wrr, persistent=None, protocol=None, **kwargs):
         self.ip = None
 
         if isinstance(port, int) and 0 < port <= 65535:
@@ -180,6 +180,13 @@ class __Virtual(object):
             self.secret = secret
         elif secret is None:
             self.secret = None
+        else:
+            raise ValueError
+
+        if isinstance(fingerprint, basestring):
+            self.fingerprint = fingerprint
+        elif secret is None:
+            self.fingerprint = None
         else:
             raise ValueError
 
