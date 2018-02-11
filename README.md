@@ -4,6 +4,7 @@ PyDirectord is intended as a replacement for ldirectord. It is based on the Twis
 ## Dependencies
 PyDirectord has the following Python dependencies:
 * Python (version 3.4 or newer)
+* pyparsing
 * Twisted (version 17.9.0 or newer)
 * pyOpenSSL
 * service\_identity
