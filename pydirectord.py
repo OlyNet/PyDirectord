@@ -47,6 +47,9 @@ def parse_args():
     # parse the config file
     global_config, virtuals = config.parse_config(options.config_file)
 
+    # insert PyDirectord version information into global_config
+    global_config.version = __version__
+
     # make some changes depending on the command-line arguments
     if options.debug:
         global_config.supervised = True

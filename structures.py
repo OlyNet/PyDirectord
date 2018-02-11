@@ -33,6 +33,9 @@ class GlobalConfig(object):
         else:
             raise ValueError
 
+        # program information
+        self.version = None
+
         # variable initialization
         self.log = None
         self.log_level = logging.INFO

@@ -56,7 +56,7 @@ def check(virtual, real, global_config):
     uri = b'https://' + real.ip.exploded.encode() + b":" + port.encode() + b'/' + path.encode()
 
     # prepare headers
-    headers = {'User-Agent': ['Pydirectord 0.9'], 'Host': [hostname]}
+    headers = {'User-Agent': ['PyDirectord ' + global_config.version], 'Host': [hostname]}
 
     # prepare ssl
     contextFactory = CheckContextFactory(hostname=hostname)
