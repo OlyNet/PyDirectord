@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PyDirectord is a rewrite of 'ldirectord' in python using the twisted framework.
+PyDirectord is a replacement of 'ldirectord' in python using the twisted framework.
 """
 import logging
 import optparse
